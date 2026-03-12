@@ -8,6 +8,6 @@ services:
     environment:
       - PORT=4008
     # Remove volumes in production so the build is used
-    # volumes:
-    #   - ./server:/app/server
-    #   - ./client:/app/client
+    volumes:
+       - ./server:/app/server
+       - ./client:/app/client
