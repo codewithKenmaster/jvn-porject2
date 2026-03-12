@@ -1,156 +1,11 @@
 # -------------------------------------------------------------
 # CI PIPELINE FOR OPEN SOURCE HEALTH DASHBOARD
 #
-# This GitHub Actions workflow implements Continuous Integration
-# for the project. It automatically runs whenever code is pushed
-# to the main branch.
-#
-# The pipeline performs two main tasks:
-# 1. Linting the code using ESLint to enforce code quality
-# 2. Running automated tests (currently placeholder tests)
-#
-# If either job fails, the entire pipeline fails.
-# This ensures broken or low-quality code cannot pass CI.
+# This workflow runs on pushes to main and automates:
+# - Linting server code
+# - Running server tests
+# - Building the React frontend
 # -------------------------------------------------------------
-
-## name: CI Pipeline
-
-# -------------------------------------------------------------
-# WORKFLOW TRIGGER
-#
-# This workflow runs automatically whenever code is pushed
-# to the main branch of the repository.
-# -------------------------------------------------------------
-## on:
-## push:
-## branches:
-## - main
-
-# -------------------------------------------------------------
-# JOB DEFINITIONS
-#
-# Each job runs in an isolated GitHub runner (virtual machine).
-# If any job fails, the entire workflow fails.
-# -------------------------------------------------------------
-## jobs:
-
-# -----------------------------------------------------------
-# JOB 1 — LINTING
-#
-# This job checks the code for syntax issues and bad
-# programming practices using ESLint.
-#
-# If ESLint finds errors, the job fails and prevents
-# the pipeline from passing.
-# -----------------------------------------------------------
-## lint:
-
-## name: Lint Code
-
-# The job runs inside a GitHub-hosted Ubuntu virtual machine
-## runs-on: ubuntu-latest
-
-## steps:
-
-# -------------------------------------------------------
-# Step 1: Checkout the repository
-#
-# Downloads the project code from GitHub into the runner
-# so the pipeline can access the source files.
-# -------------------------------------------------------
-## - name: Checkout Repository
-##  uses: actions/checkout@v4
-
-# -------------------------------------------------------
-# Step 2: Setup Node.js
-#
-# Installs Node.js version 20 in the CI environment.
-# This is required to install dependencies and run scripts.
-# -------------------------------------------------------
-## - name: Setup Node
-## uses: actions/setup-node@v4
-## with:
-## node-version: 20
-
-# -------------------------------------------------------
-# Step 3: Install Server Dependencies
-#
-# Moves into the server directory and installs all
-# dependencies defined in package.json.
-# -------------------------------------------------------
-##  - name: Install Server Dependencies
-## run: |
-##  cd server
-## npm install
-
-# -------------------------------------------------------
-# Step 4: Run ESLint
-#
-# Executes the lint script defined in package.json.
-#
-# Example script:
-# "lint": "eslint ."
-#
-# If ESLint detects errors, this step fails.
-# -------------------------------------------------------
-## - name: Run ESLint
-## run: |
-##  cd server
-##  npm run lint
-
-# -----------------------------------------------------------
-# JOB 2 — TESTING
-#
-# This job runs automated tests for the project.
-#
-# Even though the project currently has placeholder tests,
-# this step demonstrates CI automation practices.
-# -----------------------------------------------------------
-##test:
-
-## name: Run Tests
-
-## runs-on: ubuntu-latest
-
-## steps:
-
-# -------------------------------------------------------
-# Step 1: Checkout repository code
-# -------------------------------------------------------
-## - name: Checkout Repository
-##  uses: actions/checkout@v4
-
-# -------------------------------------------------------
-# Step 2: Install Node.js environment
-# -------------------------------------------------------
-## - name: Setup Node
-## uses: actions/setup-node@v4
-##  with:
-##   node-version: 20
-
-# -------------------------------------------------------
-# Step 3: Install dependencies
-# -------------------------------------------------------
-## - name: Install Dependencies
-##  run: |
-##  cd server
-##  npm install
-
-# -------------------------------------------------------
-# Step 4: Run tests
-#
-# This executes the test script defined in package.json.
-#
-# Example script:
-# "test": "echo 'Tests placeholder'"
-#
-# If real tests are added later (Jest, Mocha, etc.)
-# this step will automatically execute them.
-# -------------------------------------------------------
-## - name: Run Tests
-##   run: |
-##  cd server
-##  npm test
 
 name: CI Pipeline
 
@@ -159,16 +14,24 @@ on:
     branches:
       - main
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Force Node.js 24 to avoid deprecation warnings
+
 jobs:
+  # ----------------------------
+  # JOB 1: Lint server code
+  # ----------------------------
   lint:
-    name: Lint Code
+    name: Lint Server Code
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full git history to prevent git errors
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -183,20 +46,26 @@ jobs:
           cd server
           npm run lint
 
+  # ----------------------------
+  # JOB 2: Run server tests
+  # ----------------------------
   test:
-    name: Run Tests
+    name: Run Server Tests
     runs-on: ubuntu-latest
+    needs: lint # only run tests if lint passes
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
 
-      - name: Install Dependencies
+      - name: Install Server Dependencies
         run: |
           cd server
           npm install
@@ -205,3 +74,38 @@ jobs:
         run: |
           cd server
           npm test
+
+  # ----------------------------
+  # JOB 3: Build React frontend
+  # ----------------------------
+  build-client:
+    name: Build React Frontend
+    runs-on: ubuntu-latest
+    needs: [lint, test] # build only if lint and tests pass
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Client Dependencies
+        run: |
+          cd client
+          npm install
+
+      - name: Build React App
+        run: |
+          cd client
+          npm run build
+
+      - name: Archive Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: react-build
+          path: client/build
