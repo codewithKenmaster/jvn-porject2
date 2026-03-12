@@ -1,11 +1,13 @@
 version: "3.9"
+
 services:
   open-source-health-dashboard:
     build: .
     ports:
-      - "4008:4008"  
+      - "4008:4008"
     environment:
       - PORT=4008
-    volumes:
-      - ./server:/app/server
-      - ./client:/app/client
+    # Remove volumes in production so the build is used
+    # volumes:
+    #   - ./server:/app/server
+    #   - ./client:/app/client
